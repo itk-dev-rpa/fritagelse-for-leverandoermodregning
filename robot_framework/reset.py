@@ -1,6 +1,9 @@
 """This module handles resetting the state of the computer so the robot can work with a clean slate."""
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
+from itk_dev_shared_components.sap import sap_login
+
+from robot_framework import config
 
 
 def reset(orchestrator_connection: OrchestratorConnection) -> None:
@@ -25,8 +28,11 @@ def close_all(orchestrator_connection: OrchestratorConnection) -> None:
 def kill_all(orchestrator_connection: OrchestratorConnection) -> None:
     """Forcefully close all applications used by the robot."""
     orchestrator_connection.log_trace("Killing all applications.")
+    sap_login.kill_sap()
 
 
 def open_all(orchestrator_connection: OrchestratorConnection) -> None:
     """Open all programs used by the robot."""
     orchestrator_connection.log_trace("Opening all applications.")
+    sap_creds = orchestrator_connection.get_credential(config.SAP_USER)
+    sap_login.login_using_cli(sap_creds.username, sap_creds.password)
