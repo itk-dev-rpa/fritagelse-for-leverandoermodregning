@@ -2,8 +2,9 @@
 
 import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta, date
+from functools import lru_cache
 import os
-from datetime import datetime, timedelta
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from itk_dev_shared_components.sap import multi_session, fmcacov, opret_kundekontakt
@@ -11,6 +12,7 @@ from itk_dev_shared_components.graph import authentication as graph_authenticati
 from itk_dev_shared_components.graph import mail as graph_mail
 from itk_dev_shared_components.smtp import smtp_util
 from bs4 import BeautifulSoup
+import requests
 
 from robot_framework import config
 
@@ -31,7 +33,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     graph_access = graph_authentication.authorize_by_username_password(graph_credentials.username, **json.loads(graph_credentials.password))
     multi_session.spawn_sessions(6)
 
-    tasks = get_emails(graph_access)
+    tasks = get_email_tasks(graph_access)
 
     approved_senders = json.loads(orchestrator_connection.process_arguments)["approved_senders"]
 
@@ -65,7 +67,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         graph_mail.delete_email(task.mail, graph_access)
 
 
-def handle_task(session, id_: str, new_date: datetime, sender_az: str):
+def handle_task(session, id_: str, new_date: date, sender_az: str):
     """Handle a single SAP task.
 
     Args:
@@ -80,7 +82,7 @@ def handle_task(session, id_: str, new_date: datetime, sender_az: str):
         opret_kundekontakt.opret_kundekontakter(session, fp=id_, aftaler=None, art="Orientering", notat=note_text)
 
 
-def get_emails(graph_access: graph_authentication.GraphAccess) -> list[Task]:
+def get_email_tasks(graph_access: graph_authentication.GraphAccess) -> list[Task]:
     """Read the inbox for the robot and interpret the emails waiting there.
 
     Args:
@@ -133,7 +135,7 @@ def validate_task(task: Task, approved_senders: list[str]) -> str | None:
     return None
 
 
-def set_modregning_date(session, id_: str, new_date: datetime) -> bool:
+def set_modregning_date(session, id_: str, new_date: date) -> bool:
     """Set the date for modregningsfritagelse.
     If the date is already set to a date further away, the date is not changed.
 
@@ -152,10 +154,12 @@ def set_modregning_date(session, id_: str, new_date: datetime) -> bool:
     session.findById(
         "wnd[0]/usr/subSCREEN_3000_RESIZING_AREA:SAPLBUS_LOCATOR:2000/subSCREEN_1010_RIGHT_AREA:SAPLBUPA_DIALOG_JOEL:1000/ssubSCREEN_1000_WORKAREA_AREA:SAPLBUPA_DIALOG_JOEL:1100/ssubSCREEN_1100_MAIN_AREA:SAPLBUPA_DIALOG_JOEL:1101/tabsGS_SCREEN_1100_TABSTRIP/tabpSCREEN_1100_TAB_05"
         ).select()
-    date_field = session.findById("wnd[0]/usr/subSCREEN_3000_RESIZING_AREA:SAPLBUS_LOCATOR:2000/subSCREEN_1010_RIGHT_AREA:SAPLBUPA_DIALOG_JOEL:1000/ssubSCREEN_1000_WORKAREA_AREA:SAPLBUPA_DIALOG_JOEL:1100/ssubSCREEN_1100_MAIN_AREA:SAPLBUPA_DIALOG_JOEL:1101/tabsGS_SCREEN_1100_TABSTRIP/tabpSCREEN_1100_TAB_05/ssubSCREEN_1100_TABSTRIP_AREA:SAPLBUSS:0028/ssubGENSUB:SAPLBUSS:7138/subA07P01:SAPLZDKD_AGR_BPMASTER:0100/ctxtBUT000-ZZOFFSET_EXEMP_DATE")
+    date_field = session.findById(
+        "wnd[0]/usr/subSCREEN_3000_RESIZING_AREA:SAPLBUS_LOCATOR:2000/subSCREEN_1010_RIGHT_AREA:SAPLBUPA_DIALOG_JOEL:1000/ssubSCREEN_1000_WORKAREA_AREA:SAPLBUPA_DIALOG_JOEL:1100/ssubSCREEN_1100_MAIN_AREA:SAPLBUPA_DIALOG_JOEL:1101/tabsGS_SCREEN_1100_TABSTRIP/tabpSCREEN_1100_TAB_05/ssubSCREEN_1100_TABSTRIP_AREA:SAPLBUSS:0028/ssubGENSUB:SAPLBUSS:7138/subA07P01:SAPLZDKD_AGR_BPMASTER:0100/ctxtBUT000-ZZOFFSET_EXEMP_DATE"
+        )
 
     # Check if the current date (if any) is before the new date
-    if not date_field.text or datetime.strptime(date_field.text, "%d.%m.%Y").date() < new_date.date():
+    if not date_field.text or datetime.strptime(date_field.text, "%d.%m.%Y").date() < new_date:
         date_field.text = new_date.strftime("%d.%m.%Y")
         session.findById("wnd[0]/tbar[0]/btn[11]").press()
         date_changed = True
@@ -167,14 +171,40 @@ def set_modregning_date(session, id_: str, new_date: datetime) -> bool:
     return date_changed
 
 
-def _get_new_date() -> datetime:
+def _get_new_date() -> date:
     """Calculate the new date for modregningsfritagelse.
     It's today's date plus two days.
 
     Returns:
         The new date.
     """
-    return (datetime.today() + timedelta(days=2))
+    new_date = date.today() + timedelta(days=3)
+
+    while new_date.weekday() in (5, 6) or new_date in _get_holidays(new_date.year):
+        new_date += timedelta(days=1)
+
+    return new_date
+
+
+@lru_cache
+def _get_holidays(year: int) -> list[date]:
+    """Get the public holidays in Denmark for the given year.
+    This function is cached to avoid multiple requests.
+
+    Args:
+        year: The given year.
+
+    Returns:
+        A list of dates that are holidays.
+    """
+    holidays = requests.get(f"https://date.nager.at/api/v3/publicholidays/{year}/DK").json()
+
+    result = []
+    for holiday in holidays:
+        year, month, day = map(int, holiday["date"].split("-"))
+        result.append(date(year, month, day))
+
+    return result
 
 
 if __name__ == '__main__':
