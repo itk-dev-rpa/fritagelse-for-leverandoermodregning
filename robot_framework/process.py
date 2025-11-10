@@ -19,6 +19,7 @@ from robot_framework import config
 
 @dataclass
 class Task:
+    """A dataclass representing a task from an email."""
     id_list: list[str]
     sender_az: str
     sender_email: str
@@ -197,7 +198,7 @@ def _get_holidays(year: int) -> list[date]:
     Returns:
         A list of dates that are holidays.
     """
-    holidays = requests.get(f"https://date.nager.at/api/v3/publicholidays/{year}/DK").json()
+    holidays = requests.get(f"https://date.nager.at/api/v3/publicholidays/{year}/DK", timeout=10).json()
 
     result = []
     for holiday in holidays:
