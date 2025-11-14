@@ -13,6 +13,7 @@ from itk_dev_shared_components.graph import mail as graph_mail
 from itk_dev_shared_components.smtp import smtp_util
 from bs4 import BeautifulSoup
 import requests
+import itk_dev_event_log as event_log
 
 from robot_framework import config
 
@@ -29,6 +30,8 @@ class Task:
 def process(orchestrator_connection: OrchestratorConnection) -> None:
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
+
+    event_log.setup_logging(orchestrator_connection.get_constant(config.EVENT_LOG).value)
 
     graph_credentials = orchestrator_connection.get_credential(config.GRAPH_API)
     graph_access = graph_authentication.authorize_by_username_password(graph_credentials.username, **json.loads(graph_credentials.password))
@@ -49,6 +52,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 smtp_port=config.SMTP_PORT,
                 smtp_server=config.SMTP_SERVER
             )
+            event_log.emit(orchestrator_connection.process_name, "Task rejected")
         else:
             new_date = _get_new_date()
 
@@ -64,6 +68,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 smtp_port=config.SMTP_PORT,
                 smtp_server=config.SMTP_SERVER
             )
+
+            event_log.emit(orchestrator_connection.process_name, "Task processed", len(task.id_list))
 
         graph_mail.delete_email(task.mail, graph_access)
 
@@ -211,5 +217,5 @@ def _get_holidays(year: int) -> list[date]:
 if __name__ == '__main__':
     conn_string = os.getenv("OpenOrchestratorConnString")
     crypto_key = os.getenv("OpenOrchestratorKey")
-    oc = OrchestratorConnection("Fritagelse for leverandørmodregning", conn_string, crypto_key, '{"approved_senders":["az12345"]}')
+    oc = OrchestratorConnection("Fritagelse for leverandørmodregning", conn_string, crypto_key, '{"approved_senders":["az12345"]}', "trigger_id")
     process(oc)

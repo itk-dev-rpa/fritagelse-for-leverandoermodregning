@@ -16,10 +16,11 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
-    "OpenOrchestrator == 1.*",
+    "OpenOrchestrator == 2.*",
     "Pillow == 10.*",
     "itk_dev_shared_components == 2.*",
     "beautifulsoup4 == 4.*",
+    "itk_dev_event_log == 1.*"
 ]
 
 [project.optional-dependencies]
