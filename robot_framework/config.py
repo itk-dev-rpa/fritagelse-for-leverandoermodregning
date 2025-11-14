@@ -13,15 +13,10 @@ SCREENSHOT_SENDER = "robot@friend.dk"
 
 # Constant/Credential names
 ERROR_EMAIL = "Error Email"
+GRAPH_API = "Graph API"
+SAP_USER = "SAP Leverandørmodregning"
+EVENT_LOG = "Event Log"
 
-
-# Queue specific configs
-# ----------------------
-
-# The name of the job queue (if any)
-QUEUE_NAME = None
-
-# The limit on how many queue elements to process
-MAX_TASK_COUNT = 100
-
-# ----------------------
+# Other
+MAIL_SOURCE_FOLDER = "Indbakke/Fritagelse for leverandørmodregning"
+MAIL_INBOX_SUBJECT = "RPA - Fritagelse for leverandørmodregning (fra Selvbetjening.aarhuskommune.dk)"
