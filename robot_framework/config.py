@@ -15,6 +15,7 @@ SCREENSHOT_SENDER = "robot@friend.dk"
 ERROR_EMAIL = "Error Email"
 GRAPH_API = "Graph API"
 SAP_USER = "SAP Leverandørmodregning"
+EVENT_LOG = "Event Log"
 
 # Other
 MAIL_SOURCE_FOLDER = "Indbakke/Fritagelse for leverandørmodregning"
