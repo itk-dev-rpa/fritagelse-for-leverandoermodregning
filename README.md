@@ -5,9 +5,9 @@ The robot is activated using an OS2Forms formula which delivers an email.
 
 ## Output
 
-If a task is invalid an email is send to the original sender.
+If a task is invalid an email is sent to the original sender.
 
-When a task is completed an email is send to the original sender.
+When a task is completed an email is sent to the original sender.
 
 ## Arguments
 
