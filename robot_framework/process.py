@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 from functools import lru_cache
 import os
+import threading
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from itk_dev_shared_components.sap import multi_session, fmcacov, opret_kundekontakt
@@ -57,7 +58,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             new_date = _get_new_date()
 
             # Run all ids in parallel
-            args = tuple((id_, new_date, task.sender_az) for id_ in task.id_list)
+            lock = threading.Lock()
+            args = tuple((id_, new_date, task.sender_az, lock) for id_ in task.id_list)
             multi_session.run_batches(handle_task, args=args, num_sessions=6)
 
             smtp_util.send_email(
@@ -74,7 +76,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         graph_mail.delete_email(task.mail, graph_access)
 
 
-def handle_task(session, id_: str, new_date: date, sender_az: str):
+def handle_task(session, id_: str, new_date: date, sender_az: str, lock: threading.Lock):
     """Handle a single SAP task.
 
     Args:
@@ -86,7 +88,7 @@ def handle_task(session, id_: str, new_date: date, sender_az: str):
     date_changed = set_modregning_date(session, id_, new_date)
     if date_changed:
         note_text = f"RPA: Dato for fritagelse for leverandørmodregning er sat til {new_date.strftime('%d.%m.%Y')} på vegne af {sender_az}."
-        opret_kundekontakt.opret_kundekontakter(session, fp=id_, aftaler=None, art="Orientering", notat=note_text)
+        opret_kundekontakt.opret_kundekontakter(session, fp=id_, aftaler=None, art="Orientering", notat=note_text, lock=lock)
 
 
 def get_email_tasks(graph_access: graph_authentication.GraphAccess) -> list[Task]:
