@@ -156,7 +156,10 @@ def set_modregning_date(session, id_: str, new_date: date) -> bool:
     Returns:
         True if the date was changed.
     """
-    fmcacov.open_forretningspartner(session, id_)
+    try:
+        fmcacov.open_forretningspartner(session, id_)
+    except fmcacov.InvalidFPError:
+        return False
 
     session.findById("wnd[0]/shellcont/shell").nodeContextMenu("GP0000000001")
     session.findById("wnd[0]/shellcont/shell").selectContextMenuItem("BPC")
