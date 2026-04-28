@@ -4,7 +4,6 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 from functools import lru_cache
-import os
 import threading
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
