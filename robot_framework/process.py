@@ -222,5 +222,5 @@ def _get_holidays(year: int) -> list[date]:
 if __name__ == '__main__':
     conn_string = os.getenv("OpenOrchestratorConnString")
     crypto_key = os.getenv("OpenOrchestratorKey")
-    oc = OrchestratorConnection("Fritagelse for leverandørmodregning", conn_string, crypto_key, '{"approved_senders":["az12345"]}', "trigger_id")
+    oc = OrchestratorConnection("Fritagelse for leverandørmodregning", conn_string, crypto_key, '{"approved_senders":["az12345"]}', "trigger_id", "")
     process(oc)
