@@ -4,7 +4,6 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, date
 from functools import lru_cache
-import os
 import threading
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
@@ -217,10 +216,3 @@ def _get_holidays(year: int) -> list[date]:
         result.append(date(year, month, day))
 
     return result
-
-
-if __name__ == '__main__':
-    conn_string = os.getenv("OpenOrchestratorConnString")
-    crypto_key = os.getenv("OpenOrchestratorKey")
-    oc = OrchestratorConnection("Fritagelse for leverandørmodregning", conn_string, crypto_key, '{"approved_senders":["az12345"]}', "trigger_id")
-    process(oc)
